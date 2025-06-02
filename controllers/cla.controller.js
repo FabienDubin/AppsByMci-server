@@ -170,7 +170,7 @@ exports.getResults = async (req, res) => {
       .limit(Number(limit));
 
     //Getting the number of results
-    const totalResults = await CLAResponse.countDoncuments();
+    const totalResults = await CLAResponse.countDocuments();
 
     //Final Response
     res.status(200).json({

@@ -14,7 +14,7 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
 const allowedOrigins = (process.env.ORIGIN || "").split(",");
-
+console.log(allowedOrigins);
 // Middleware configuration
 module.exports = (app) => {
   // Because this will be hosted on a server that will accept requests from outside and it will be hosted ona server with a `proxy`, express needs to know that it should trust that setting.
