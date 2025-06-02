@@ -161,8 +161,24 @@ exports.submitAnswer = async (req, res) => {
 // gets the results of the quiz for the admin
 exports.getResults = async (req, res) => {
   try {
-    const results = await CLAResponse.find().sort({ createdAt: -1 });
-    res.json(results);
+    const { page = 1, limit = 10 } = req.query;
+
+    //Finding the results
+    const results = await CLAResponse.find()
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    //Getting the number of results
+    const totalResults = await CLAResponse.countDoncuments();
+
+    //Final Response
+    res.status(200).json({
+      results,
+      currentPage: Number(page),
+      totalPages: Math.ceil(totalResults / limit),
+      totalResults,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
