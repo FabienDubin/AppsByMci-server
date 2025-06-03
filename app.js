@@ -27,6 +27,9 @@ app.use("/users", usersRoutes);
 const claRoutes = require("./routes/cla.route");
 app.use("/cla", claRoutes);
 
+const yearbookRoutes = require("./routes/yearbook.route");
+app.use("/yearbook", yearbookRoutes);
+
 // ❗ To handle errors. Routes that don't exist or errors that you handle in specific routes
 require("./error-handling")(app);
 
