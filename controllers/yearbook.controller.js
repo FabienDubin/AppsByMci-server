@@ -22,6 +22,14 @@ const upload = multer({
   },
 });
 
+const OpenAI = require("openai");
+const { toFile } = require("openai/uploads");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+
+const client = new OpenAI();
+
 //This function renders the prompt from the template and the user data
 const renderPrompt = (template, data) => {
   return template.replace(/{{(.*?)}}/g, (_, key) => data[key.trim()] || "");
@@ -99,13 +107,11 @@ exports.submitPhoto = async (req, res) => {
       });
     }
 
-    //Get the config
     const config = await YearbookConfig.findOne();
     if (!config) {
       return res.status(403).json({ message: "Pas de config disponible" });
     }
 
-    //Check security code
     if (config.code !== code) {
       return res.status(403).json({ message: "Code incorrect" });
     }
@@ -116,7 +122,6 @@ exports.submitPhoto = async (req, res) => {
       imageFile.mimetype.split("/")[1]
     }`;
 
-    // Create a blob client and upload the original image
     const { BlobServiceClient } = require("@azure/storage-blob");
     const blobServiceClient = BlobServiceClient.fromConnectionString(
       process.env.AZURE_STORAGE_CONNECTION_STRING
@@ -131,39 +136,44 @@ exports.submitPhoto = async (req, res) => {
 
     const originalImageUrl = originalBlobClient.url;
 
-    //Prepare prompt variables
-    const promptVariables = {
-      name,
-      gender,
-    };
-
-    //Generate prompt
+    // Generate prompt
+    const promptVariables = { name, gender };
     const prompt = renderPrompt(config.promptTemplate, promptVariables);
 
-    //API call to OpenAI for image generation based on prompt
-    const openaiRes = await axios.post(
-      "https://api.openai.com/v1/images/generations",
-      {
-        model: "dall-e-3",
-        prompt: prompt,
-        n: 1,
-        size: "1024x1024",
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
+    // Write image to a temporary file
+    const tempFilePath = path.join(os.tmpdir(), originalFilename);
+    fs.writeFileSync(tempFilePath, originalImageBuffer);
+
+    // Convert image to OpenAI-compatible file
+    const openAiImageFile = await toFile(
+      fs.createReadStream(tempFilePath),
+      originalFilename,
+      { type: imageFile.mimetype }
     );
 
-    //Get the generated image URL from OpenAI
-    const generatedImageUrl = openaiRes.data.data[0].url;
-    const storedGeneratedUrl = await uploadImageToAzureFromUrl(
-      generatedImageUrl
-    );
+    // Call OpenAI image edit endpoint
+    const response = await client.images.edit({
+      model: "gpt-image-1",
+      image: openAiImageFile,
+      prompt,
+    });
 
-    //Save the response to database
+    // Get base64 image and convert to buffer
+    const image_base64 = response.data[0].b64_json;
+    const imageBuffer = Buffer.from(image_base64, "base64");
+
+    // Upload generated image to Azure
+    const generatedFilename = `yearbook-generated-${Date.now()}.png`;
+    const generatedBlobClient =
+      containerClient.getBlockBlobClient(generatedFilename);
+
+    await generatedBlobClient.uploadData(imageBuffer, {
+      blobHTTPHeaders: { blobContentType: "image/png" },
+    });
+
+    const storedGeneratedUrl = generatedBlobClient.url;
+
+    // Save response in DB
     const newResponse = new YearbookResponse({
       name,
       gender,
@@ -180,6 +190,9 @@ exports.submitPhoto = async (req, res) => {
       generatedImageUrl: storedGeneratedUrl,
       message: "Image yearbook générée avec succès",
     });
+
+    // Clean up temporary file
+    fs.unlinkSync(tempFilePath);
   } catch (error) {
     console.error("Error in submitPhoto:", error);
     res.status(500).json({ message: "Internal server error" });
