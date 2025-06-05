@@ -8,6 +8,7 @@ const {
   submitPhoto,
   getResults,
   uploadMiddleware,
+  deleteResult,
 } = require("../controllers/yearbook.controller");
 
 // GET /yearbook/config
@@ -25,5 +26,9 @@ router.post("/submit", uploadMiddleware, submitPhoto);
 // GET /yearbook/results
 // gets all yearbook results for admin
 router.get("/results", getResults);
+
+// DELETE /yearbook/delete/:id
+// deletes a yearbook result by id (admin only)
+router.delete("/delete/:id", deleteResult);
 
 module.exports = router;

@@ -227,5 +227,19 @@ exports.getResults = async (req, res) => {
   }
 };
 
+// DELETE /yearbook/delete/:id
+// deletes a yearbook result by id (admin only)
+exports.deleteResult = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await YearbookResponse.findById(id);
+    res.status(200).json({ result, message: "Réponse supprimée avec succès" });
+    await result.deleteOne();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 // Export multer upload middleware
 exports.uploadMiddleware = upload.single("image");
