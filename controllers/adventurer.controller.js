@@ -203,7 +203,7 @@ exports.submitResponse = async (req, res) => {
   try {
     const { name, gender, code, answers } = req.body;
     const imageFile = req.file;
-
+    console.log(answers);
     if (!name || !gender || !code || !imageFile || !answers) {
       return res.status(400).json({
         message: "Nom, genre, code, réponses et image sont requis",
@@ -259,7 +259,7 @@ exports.submitResponse = async (req, res) => {
     //Mapping of the answers
     const mappedAnswers = config.questions.map((question, i) => {
       const selectedAnswer = question.options.find(
-        (option) => option.value === answers[i]
+        (option) => option.value === parsedAnswers[i]
       );
       return selectedAnswer ? selectedAnswer.label : "Réponse inconnue";
     });
@@ -272,10 +272,10 @@ exports.submitResponse = async (req, res) => {
       answer2: mappedAnswers[1],
       answer3: mappedAnswers[2],
       answer4: mappedAnswers[3],
-      answer4: mappedAnswers[4],
+      answer5: mappedAnswers[4],
     };
     const prompt = renderPrompt(config.promptTemplate, promptVariables);
-
+    console.log(prompt);
     // Write image to a temporary file
     const tempFilePath = path.join(os.tmpdir(), originalFilename);
     fs.writeFileSync(tempFilePath, originalImageBuffer);
