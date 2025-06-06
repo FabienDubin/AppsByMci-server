@@ -4,11 +4,21 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User.model");
 const Mailjet = require("node-mailjet");
 
-//Mailjet config for reset password
-const mailjet = new Mailjet({
-  apiKey: process.env.MAILJET_API_KEY,
-  apiSecret: process.env.MAILJET_SECRET_KEY,
-});
+//Mailjet config for reset password - Initialize only when needed
+let mailjet;
+const getMailjetClient = () => {
+  if (
+    !mailjet &&
+    process.env.MAILJET_API_KEY &&
+    process.env.MAILJET_SECRET_KEY
+  ) {
+    mailjet = new Mailjet({
+      apiKey: process.env.MAILJET_API_KEY,
+      apiSecret: process.env.MAILJET_SECRET_KEY,
+    });
+  }
+  return mailjet;
+};
 
 const saltRounds = 10;
 
@@ -214,7 +224,11 @@ exports.resetPasswordRequest = async (req, res, next) => {
     //Generate the reset password link
     const resetLink = `${process.env.ORIGIN}/reset-password/${token}`;
     //Send the reset link via Mailjet
-    await mailjet.post("send", { version: "v3.1" }).request({
+    const mailjetClient = getMailjetClient();
+    if (!mailjetClient) {
+      return res.status(500).json({ message: "Email service not configured" });
+    }
+    await mailjetClient.post("send", { version: "v3.1" }).request({
       Messages: [
         {
           From: {
