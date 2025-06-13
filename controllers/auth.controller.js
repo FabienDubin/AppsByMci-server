@@ -212,6 +212,7 @@ exports.admin = async (req, res, next) => {
 // POST /reset-password - Generate a token to reset user's password using Mailjet API
 exports.resetPasswordRequest = async (req, res, next) => {
   const { email } = req.body;
+
   try {
     //Check if the user exists in the db
     const user = await User.findOne({ email });
@@ -222,7 +223,8 @@ exports.resetPasswordRequest = async (req, res, next) => {
       expiresIn: "1h",
     });
     //Generate the reset password link
-    const resetLink = `${process.env.ORIGIN}/reset-password/${token}`;
+    const resetLink = `http://www.appsbymci.com/reset-password/${token}`;
+    console.log(resetLink);
     //Send the reset link via Mailjet
     const mailjetClient = getMailjetClient();
     if (!mailjetClient) {
@@ -236,11 +238,31 @@ exports.resetPasswordRequest = async (req, res, next) => {
             Name: process.env.MAILJET_NAME,
           },
           To: [{ Email: email }],
-          Subject: "Password Reset",
-          HTMLPart: `<h3>Hello ${user.firstName}!</h3>
-            <p>Follow the link below to reset your password</p>
-            <p><a href="${resetLink}">Reset my password</a></p>
-            <p>This link expires in 1 hour</p>`,
+          Subject: "Reset your password",
+          HTMLPart: `
+      <div style="font-family: Arial, sans-serif; color: #333; background-color: #f9f9f9; padding: 20px;">
+        <div style="max-width: 600px; margin: auto; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <div style="background-color: #4a90e2; color: #fff; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">Reset your password</h1>
+          </div>
+          <div style="padding: 30px; font-size: 16px; line-height: 1.5;">
+            <p>Hello <strong>${user.firstName}</strong>,</p>
+            <p>You requested to reset your password. Click the button below to proceed:</p>
+            <p style="text-align: center; margin: 30px 0;">
+              <a href="${resetLink}" style="display: inline-block; padding: 12px 24px; background-color: #4a90e2; color: #fff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Reset my password
+              </a>
+            </p>
+            <p>If the button doesn't work, you can also copy and paste this link into your browser:</p>
+            <p style="word-break: break-all;">${resetLink}</p>
+            <p>This link is valid for <strong>1 hour</strong>.</p>
+            <p>If you didn't request this, you can ignore this email — your password will remain unchanged.</p>
+          </div>
+          <div style="background-color: #f0f0f0; color: #777; text-align: center; padding: 15px; font-size: 12px;">
+            &copy; ${new Date().getFullYear()} Apps by MCI — All rights reserved.
+          </div>
+        </div>
+      </div>`,
         },
       ],
     });
